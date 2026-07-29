@@ -24,6 +24,16 @@ const ELEMENTS = [
   { name: "수(水)", label: "지혜와 흐름", base: [1, 6] },
 ];
 
+function getVisitorId() {
+  const key = "haengun-visitor-id";
+  const saved = window.localStorage.getItem(key);
+  if (saved) return saved;
+
+  const visitorId = window.crypto.randomUUID();
+  window.localStorage.setItem(key, visitorId);
+  return visitorId;
+}
+
 function pickNumbers() {
   const pool = Array.from({ length: 45 }, (_, index) => index + 1);
 
@@ -124,10 +134,55 @@ export default function Home() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const visitorId = getVisitorId();
+        const response = await fetch(`/api/draws?visitorId=${encodeURIComponent(visitorId)}`);
+        if (!response.ok) return;
+
+        const data = await response.json() as { draws?: Draw[] };
+        if (Array.isArray(data.draws)) setHistory(data.draws);
+      } catch {
+        // Supabase가 설정되지 않은 환경에서도 로컬 추첨 기능은 유지합니다.
+      }
+    };
+
+    void loadHistory();
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const saveDraw = async (drawNumbers: number[], source: "random" | "fortune") => {
+    const optimisticDraw = { id: Date.now(), numbers: drawNumbers };
+    setHistory((current) => [optimisticDraw, ...current].slice(0, 5));
+
+    try {
+      await fetch("/api/draws", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitorId: getVisitorId(),
+          numbers: drawNumbers,
+          source,
+        }),
+      });
+    } catch {
+      // 저장 실패 시에도 방금 생성한 번호는 현재 화면에 유지합니다.
+    }
+  };
+
+  const clearHistory = async () => {
+    setHistory([]);
+    try {
+      await fetch(`/api/draws?visitorId=${encodeURIComponent(getVisitorId())}`, {
+        method: "DELETE",
+      });
+    } catch {
+      // 네트워크 오류가 있어도 현재 화면에서는 기록을 비웁니다.
+    }
+  };
 
   const draw = () => {
     if (isDrawing) return;
@@ -146,10 +201,7 @@ export default function Home() {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
         setIsDrawing(false);
-        setHistory((current) => [
-          { id: Date.now(), numbers: next },
-          ...current,
-        ].slice(0, 5));
+        void saveDraw(next, "random");
       }
     }, 190);
   };
@@ -163,10 +215,7 @@ export default function Home() {
     window.setTimeout(() => {
       const result = makeFortune(birthDate);
       setFortune(result);
-      setHistory((current) => [
-        { id: Date.now(), numbers: result.numbers },
-        ...current,
-      ].slice(0, 5));
+      void saveDraw(result.numbers, "fortune");
       setFortuneLoading(false);
     }, 650);
   };
@@ -284,7 +333,7 @@ export default function Home() {
             <h2 id="history-title">최근 뽑은 번호</h2>
           </div>
           {history.length > 0 && (
-            <button className="clear-button" onClick={() => setHistory([])}>
+            <button className="clear-button" onClick={() => void clearHistory()}>
               기록 지우기
             </button>
           )}
