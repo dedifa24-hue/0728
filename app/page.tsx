@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 type Draw = {
   id: number;
   numbers: number[];
@@ -32,6 +38,12 @@ function getVisitorId() {
   const visitorId = window.crypto.randomUUID();
   window.localStorage.setItem(key, visitorId);
   return visitorId;
+}
+
+function trackNumberRecommendation(type: "random" | "fortune") {
+  window.gtag?.("event", "number_recommendation", {
+    recommendation_type: type,
+  });
 }
 
 function pickNumbers() {
@@ -187,6 +199,7 @@ export default function Home() {
   const draw = () => {
     if (isDrawing) return;
 
+    trackNumberRecommendation("random");
     const next = pickNumbers();
     setNumbers(next);
     setRevealed(0);
@@ -210,6 +223,7 @@ export default function Home() {
     event.preventDefault();
     if (!birthDate || fortuneLoading) return;
 
+    trackNumberRecommendation("fortune");
     setFortuneLoading(true);
     setFortune(null);
     window.setTimeout(() => {
