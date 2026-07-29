@@ -16,6 +16,8 @@ type Draw = {
 type FortuneResult = {
   numbers: number[];
   element: string;
+  elementKey: string;
+  image: string;
   title: string;
   reading: string;
   reasons: string[];
@@ -23,11 +25,11 @@ type FortuneResult = {
 
 const INITIAL_NUMBERS = [3, 12, 19, 28, 34, 41];
 const ELEMENTS = [
-  { name: "목(木)", label: "성장과 시작", base: [3, 8] },
-  { name: "화(火)", label: "열정과 표현", base: [2, 7] },
-  { name: "토(土)", label: "균형과 안정", base: [5, 10] },
-  { name: "금(金)", label: "결단과 결실", base: [4, 9] },
-  { name: "수(水)", label: "지혜와 흐름", base: [1, 6] },
+  { key: "wood", name: "목(木)", label: "성장과 시작", base: [3, 8], image: "/five-elements/wood.jpg" },
+  { key: "fire", name: "화(火)", label: "열정과 표현", base: [2, 7], image: "/five-elements/fire.jpg" },
+  { key: "earth", name: "토(土)", label: "균형과 안정", base: [5, 10], image: "/five-elements/earth.jpg" },
+  { key: "metal", name: "금(金)", label: "결단과 결실", base: [4, 9], image: "/five-elements/metal.jpg" },
+  { key: "water", name: "수(水)", label: "지혜와 흐름", base: [1, 6], image: "/five-elements/water.jpg" },
 ];
 
 function getVisitorId() {
@@ -100,6 +102,8 @@ function makeFortune(dateValue: string): FortuneResult {
   return {
     numbers,
     element: element.name,
+    elementKey: element.key,
+    image: element.image,
     title: `${element.label}의 기운이 돋보이는 날`,
     reading: `생년월일의 수리 흐름을 오행에 연결해 보면 ${element.name}의 성향이 중심에 있어요. ${element.label}을 상징하는 수를 축으로, 부족한 기운을 보완하는 수를 고르게 섞었습니다.`,
     reasons: numbers.map((number) => {
@@ -309,6 +313,16 @@ export default function Home() {
               <div className="fortune-result">
                 <div className="message user-message">{birthDate} 생이에요.</div>
                 <div className="message bot-message result-message">
+                  <div className={`fortune-visual ${fortune.elementKey}`}>
+                    <img
+                      src={fortune.image}
+                      alt={`${fortune.element}의 기운을 표현한 한국적 풍경 일러스트`}
+                    />
+                    <div className="fortune-visual-caption">
+                      <span>나의 주 오행</span>
+                      <strong>{fortune.element}</strong>
+                    </div>
+                  </div>
                   <span className="element-tag">{fortune.element}</span>
                   <strong>{fortune.title}</strong>
                   <p>{fortune.reading}</p>
